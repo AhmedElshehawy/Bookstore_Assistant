@@ -2,7 +2,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from typing import List, Dict, Any
 from langgraph.graph import StateGraph, START
 from models import State, ChatResponse
-from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
+from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, HumanMessage
 from pathlib import Path
 
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -10,12 +10,13 @@ from .tools import text_to_sql, is_safe_sql, execute_sql, calculator
 from .tools import llm
 
 from core import setup_logger, settings,Settings
+from .chat_history import ChatHistoryService
 
 # Initialize logger
 logger = setup_logger(__name__, level=settings.LOG_LEVEL)
 
 class ChatbotService:
-    def __init__(self, prompt_path: str):
+    def __init__(self, prompt_path: str, chat_history_table_name: str, chat_history_primary_key_name: str):
         """Initialize the chatbot service with configuration."""
         self.memory = MemorySaver()
         self.tools = [text_to_sql, is_safe_sql, execute_sql, calculator]
@@ -34,6 +35,7 @@ class ChatbotService:
         
         # Setup graph
         self.graph = self._build_graph()
+        
 
     def _build_graph(self) -> StateGraph:
         """Build the conversation flow graph."""
@@ -60,7 +62,7 @@ class ChatbotService:
         
         return graph_builder.compile(checkpointer=self.memory)
 
-    async def chat(self, user_input: str, config: Dict[str, Any]) -> ChatResponse:
+    async def chat(self, user_input: str, session_id: str) -> ChatResponse:
         """
         Process a user message and return a response.
         
@@ -74,10 +76,17 @@ class ChatbotService:
         Raises:
             ValueError: If the input is invalid
         """
+        config = self.get_config(session_id)
+        
         if not user_input.strip():
             raise ValueError("User input cannot be empty")
 
         try:
+            chat_history = ChatHistoryService(settings.CHAT_HISTORY_TABLE_NAME, settings.CHAT_HISTORY_PRIMARY_KEY_NAME, session_id)
+            
+            if not self.graph.get_state_history(config):
+                self.graph.update_state(config, values={'messages': chat_history.get_messages()})
+            
             events = self.graph.stream(
                 {"messages": [{"role": "user", "content": user_input}]},
                 config,
@@ -85,7 +94,7 @@ class ChatbotService:
             )
             
             for event in events:
-                event["messages"][-1].pretty_print()
+                # event["messages"][-1].pretty_print()
                 logger.info(
                     "Processing chat response",
                     extra={
@@ -96,6 +105,9 @@ class ChatbotService:
             
             final_message = event["messages"][-1]
             final_response = final_message.content
+            
+            chat_history.add_user_message(HumanMessage(content=user_input.strip()))
+            chat_history.add_assistant_message(AIMessage(content=final_response))
             
             # Log conversation for monitoring
             logger.info(
@@ -114,3 +126,16 @@ class ChatbotService:
         except Exception as e:
             logger.error(f"Error in chat: {e}", exc_info=True)
             raise RuntimeError(f"Failed to process message: {str(e)}")
+        
+    def get_config(self, thread_id: str) -> dict:
+        """Get configuration for the chat service.
+        
+        Args:
+            thread_id (str): The thread identifier
+            
+        Returns:
+            dict: Configuration dictionary
+        """
+        if not thread_id.strip():
+            raise ValueError("thread_id cannot be empty")
+        return {"configurable": {"thread_id": thread_id.strip()}}
