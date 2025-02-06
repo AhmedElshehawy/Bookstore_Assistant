@@ -6,3 +6,4 @@ fastapi
 langchain_openai
 mangum
 uvicorn
+boto3
