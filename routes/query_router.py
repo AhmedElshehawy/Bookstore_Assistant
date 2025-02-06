@@ -10,7 +10,7 @@ query_router = APIRouter(
 )
 
 
-chatbot_service = ChatbotService(settings.CHATBOT_PROMPT_PATH, settings.CHATBOT_TABLE_NAME, settings.CHATBOT_PRIMARY_KEY_NAME)
+chatbot_service = ChatbotService(settings.CHATBOT_PROMPT_PATH, settings.CHAT_HISTORY_TABLE_NAME, settings.CHAT_HISTORY_PRIMARY_KEY_NAME)
 
 logger = setup_logger(__name__, settings.LOG_LEVEL)
 
