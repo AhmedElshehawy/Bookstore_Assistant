@@ -1,0 +1,8 @@
+langchain_community
+pydantic
+numexpr
+langgraph
+fastapi
+langchain_openai
+mangum
+uvicorn

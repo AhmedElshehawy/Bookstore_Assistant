@@ -1,0 +1,158 @@
+import json
+import math
+from typing import Any, Dict
+import numexpr
+import requests
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+from core import settings
+from core.logger import setup_logger
+from models.schemas import SQLQuery
+
+# Initialize logger
+logger = setup_logger(__name__, level=settings.LOG_LEVEL)
+
+# Initialize LLM
+llm = ChatOpenAI(
+    model=settings.OPENAI_MODEL,
+    temperature=0,
+    api_key=settings.OPENAI_API_KEY
+)
+
+# Load system prompts
+try:
+    text_to_sql_system_message = SystemMessage(content=open(settings.TEXT_TO_SQL_PROMPT_PATH).read())
+    is_safe_sql_system_message = SystemMessage(content=open(settings.IS_SAFE_SQL_PROMPT_PATH).read())
+except FileNotFoundError as e:
+    logger.error(f"Failed to load prompt files: {e}")
+    raise
+
+class SQLExecutionError(Exception):
+    """Custom exception for SQL execution errors"""
+    pass
+
+@tool
+def text_to_sql(user_query: str) -> str:
+    """
+    Convert natural language query to SQL.
+    
+    Args:
+        user_query (str): The user's natural language query
+        
+    Returns:
+        str: Generated SQL query
+        
+    Raises:
+        Exception: If SQL generation fails
+    """
+    try:
+        messages = [text_to_sql_system_message, HumanMessage(content=f"User's query: {user_query}")]
+        structured_llm = llm.with_structured_output(SQLQuery, method="json_schema", strict=True)
+        sql_query = structured_llm.invoke(messages)
+        logger.info(f"Generated SQL query: {sql_query.sql_query}")
+        return sql_query.sql_query
+    except Exception as e:
+        logger.error(f"Failed to convert text to SQL: {e}")
+        raise
+
+@tool
+def is_safe_sql(sql_query: str) -> bool:
+    """
+    Check if the SQL query is safe to execute.
+    
+    Args:
+        sql_query (str): The SQL query to check
+        
+    Returns:
+        bool: True if safe, False otherwise
+    """
+    try:
+        messages = [is_safe_sql_system_message, HumanMessage(content=f"SQL query: {sql_query}")]
+        response = llm.invoke(messages)
+        is_safe = 'safe' in response.content.lower() and 'not safe' not in response.content.lower()
+        logger.info(f"SQL safety check result: {is_safe}")
+        return is_safe
+    except Exception as e:
+        logger.error(f"Failed to check SQL safety: {e}")
+        return False
+
+@tool
+def execute_sql(sql_query: str) -> Dict[str, Any]:
+    """
+    Execute SQL query and return results.
+    
+    Args:
+        sql_query (str): The SQL query to execute
+        
+    Returns:
+        Dict[str, Any]: Query results
+        
+    Raises:
+        SQLExecutionError: If query execution fails
+    """
+    try:
+        payload = json.dumps({"query": sql_query})
+        headers = {'Content-Type': 'application/json'}
+        
+        response = requests.post(
+            settings.DB_URL,
+            headers=headers,
+            data=payload,
+            timeout=30  # Add timeout
+        )
+        
+        response.raise_for_status()  # Raise exception for bad status codes
+        
+        result = response.json()
+        logger.info(f"Successfully executed SQL query")
+        return result
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to execute SQL query: {e}")
+        raise SQLExecutionError(f"Database request failed: {str(e)}")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse SQL query response: {e}")
+        raise SQLExecutionError(f"Invalid response format: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error during SQL execution: {e}")
+        raise SQLExecutionError(f"Unexpected error: {str(e)}")
+
+@tool
+def calculator(expression: str) -> str:
+    """
+    Evaluate mathematical expressions safely.
+    
+    Args:
+        expression (str): Mathematical expression to evaluate
+        
+    Returns:
+        str: Result of the calculation
+        
+    Raises:
+        ValueError: If expression is invalid
+    """
+    try:
+        # Define allowed mathematical constants
+        local_dict = {
+            "pi": math.pi,
+            "e": math.e,
+            "sqrt": math.sqrt,
+            "abs": abs
+        }
+        
+        # Clean and validate expression
+        cleaned_expression = expression.strip()
+        if not cleaned_expression:
+            raise ValueError("Empty expression")
+            
+        result = numexpr.evaluate(
+            cleaned_expression,
+            global_dict={},  # Restrict access to globals
+            local_dict=local_dict,
+        )
+        
+        logger.info(f"Calculated expression: {cleaned_expression} = {result}")
+        return str(result)
+    except Exception as e:
+        logger.error(f"Calculator error: {e}")
+        raise ValueError(f"Invalid mathematical expression: {str(e)}")
