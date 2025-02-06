@@ -156,3 +156,29 @@ def calculator(expression: str) -> str:
     except Exception as e:
         logger.error(f"Calculator error: {e}")
         raise ValueError(f"Invalid mathematical expression: {str(e)}")
+    
+@tool
+def is_relevant(user_query: str) -> bool:
+    """
+    Check if the user's query is relevant to the bookstore.
+    
+    Args:
+        user_query (str): The user's query
+        
+    Returns:
+        bool: True if relevant, False otherwise
+    """
+    try:
+        messages = [
+            SystemMessage(
+                content="You are an AI assistant tasked with answering questions related to a bookstore called https://books.toscrape.com. The bookstore's data is stored in a PostgreSQL database, and you can query this database to respond to user inquiries. If the user asks about something that is not related to the bookstore, you should politely inform them that you are not able to answer that question."
+            ), 
+            HumanMessage(content=f"User's query: {user_query}")
+        ]
+        response = llm.invoke(messages)
+        is_relevant = 'relevant' in response.content.lower() and 'not relevant' not in response.content.lower()
+        logger.info(f"Relevance check result: {is_relevant}")
+        return is_relevant
+    except Exception as e:
+        logger.error(f"Failed to check relevance: {e}")
+        return False
