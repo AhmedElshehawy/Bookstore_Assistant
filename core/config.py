@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # Chat History
     CHAT_HISTORY_TABLE_NAME: str
     CHAT_HISTORY_PRIMARY_KEY_NAME: str
+    
+    # Tracing
+    LANGCHAIN_API_KEY: str 
+    LANGCHAIN_TRACING_V2: bool = True
        
     class Config:
         env_file = ".env"
