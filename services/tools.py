@@ -70,9 +70,10 @@ def is_safe_sql(sql_query: str) -> bool:
     try:
         messages = [is_safe_sql_system_message, HumanMessage(content=f"SQL query: {sql_query}")]
         response = llm.invoke(messages)
+        ## TODO: Return the full response content
         is_safe = 'safe' in response.content.lower() and 'not safe' not in response.content.lower()
         logger.info(f"SQL safety check result: {is_safe}")
-        return is_safe
+        return response.content.lower()
     except Exception as e:
         logger.error(f"Failed to check SQL safety: {e}")
         return False
@@ -158,7 +159,7 @@ def calculator(expression: str) -> str:
         raise ValueError(f"Invalid mathematical expression: {str(e)}")
     
 @tool
-def is_relevant(user_query: str) -> bool:
+def is_relevant(user_query: str) -> str:
     """
     Check if the user's query is relevant to the bookstore.
     
@@ -176,7 +177,7 @@ def is_relevant(user_query: str) -> bool:
             HumanMessage(content=f"User's query: {user_query}")
         ]
         response = llm.invoke(messages)
-        is_relevant = 'relevant' in response.content.lower() and 'not relevant' not in response.content.lower()
+        is_relevant = response.content.lower()
         logger.info(f"Relevance check result: {is_relevant}")
         return is_relevant
     except Exception as e:
