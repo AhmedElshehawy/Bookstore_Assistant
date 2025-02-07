@@ -96,11 +96,7 @@ class ChatbotService:
             for event in events:
                 # event["messages"][-1].pretty_print()
                 logger.info(
-                    "Processing chat response",
-                    extra={
-                        "message_content": event["messages"][-1].content,
-                        "message_role": event["messages"][-1].type
-                    }
+                    f"Processing chat response: Content: {event['messages'][-1].content}, Type: {event['messages'][-1].type}"
                 )
             
             final_message = event["messages"][-1]
