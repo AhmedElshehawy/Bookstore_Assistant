@@ -32,8 +32,10 @@ class Settings(BaseSettings):
     CHAT_HISTORY_PRIMARY_KEY_NAME: str
     
     # Tracing
-    LANGCHAIN_API_KEY: str 
-    LANGCHAIN_TRACING_V2: bool = True
+    LANGSMITH_TRACING: bool = True
+    LANGSMITH_ENDPOINT: str
+    LANGSMITH_API_KEY: str
+    LANGSMITH_PROJECT: str 
        
     class Config:
         env_file = ".env"
