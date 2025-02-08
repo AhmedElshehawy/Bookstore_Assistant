@@ -19,6 +19,7 @@ from .tools import (
     llm,
     text_to_sql,
 )
+from langsmith import traceable
 
 logger = setup_logger(__name__, level=settings.LOG_LEVEL)
 
@@ -227,6 +228,7 @@ class ChatbotService:
         graph.add_edge("executor_tools", "executor")
         graph.add_edge(START, "chatbot")
 
+    @traceable
     async def chat(self, user_input: str, session_id: str) -> ChatResponse:
         """Process a user message and generate a response.
         
