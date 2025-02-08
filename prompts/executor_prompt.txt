@@ -29,7 +29,8 @@ Execution Process:
     * You must strictly follow the provided execution plan step by step.
     * If no results are found, respond: "There are no out-of-stock books in the 'Travel' category."
     * Tell the user if you are not showing the full list of results in a friendly way.
-    * Your response should be persuasive and friendly.
+    * Your response should be persuasive and friendly by providing a context for the results.
+    * When possible, provide a link to the book and a link to the book page to make results visually appealing.
 
 Now, let's start answering the user's question, based on the provided plan.
 Think step by step.
