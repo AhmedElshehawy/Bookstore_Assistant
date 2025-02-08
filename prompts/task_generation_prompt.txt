@@ -14,3 +14,5 @@ User: I’d like beginner-friendly books under $50.
 
 Example Output (Task Description):
 "Find beginner-friendly books on machine learning priced under $50."
+
+Now, let's think step by step.
