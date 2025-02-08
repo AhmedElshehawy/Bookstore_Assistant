@@ -10,8 +10,6 @@ query_router = APIRouter(
 )
 
 
-chatbot_service = ChatbotService(settings.CHATBOT_PROMPT_PATH, settings.CHAT_HISTORY_TABLE_NAME, settings.CHAT_HISTORY_PRIMARY_KEY_NAME)
-
 logger = setup_logger(__name__, settings.LOG_LEVEL)
 
 @query_router.post(
@@ -35,8 +33,9 @@ async def query_books(query_request: QueryRequest) -> QueryResponse:
     Raises:
         HTTPException: If there's an error processing the request
     """
-    logger.info(f"Processing query request: {query_request}")
+    chatbot_service = ChatbotService(settings.CHATBOT_PROMPT_PATH, settings.CHAT_HISTORY_TABLE_NAME, settings.CHAT_HISTORY_PRIMARY_KEY_NAME)
     
+    logger.info(f"Processing query request: {query_request}") 
     try:
         # Validate input
         if not query_request.user_query.strip():
