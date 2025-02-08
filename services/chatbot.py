@@ -83,10 +83,12 @@ class ChatbotService:
 
         try:
             chat_history = ChatHistoryService(settings.CHAT_HISTORY_TABLE_NAME, settings.CHAT_HISTORY_PRIMARY_KEY_NAME, session_id)
-            
-            if not self.graph.get_state_history(config):
+            logger.info(f'Previous state chat history: {list(self.graph.get_state_history(config))}')
+            logger.info(f'Current state chat history from db: {chat_history.get_messages()}')
+            if not list(self.graph.get_state_history(config)):
                 self.graph.update_state(config, values={'messages': chat_history.get_messages()})
             
+            logger.info(f'Updated state chat history: {list(self.graph.get_state_history(config))}')
             events = self.graph.stream(
                 {"messages": [{"role": "user", "content": user_input}]},
                 config,

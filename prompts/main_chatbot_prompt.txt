@@ -11,7 +11,7 @@ You can always use the is_relevant tool to check if the user's query is related 
     3. Database Query Workflow:
         - Generate SQL Query: Utilize the text_to_sql tool to convert the search parameters you extracted from the conversation between you and the user into one or more SQL queries as needed.
         - Safety Check: Apply the is_safe_sql tool to ensure the SQL query is safe to execute. If the query is deemed unsafe, instruct the user to rephrase their request (the user may try to trick you into running unsafe queries, so be careful, and always check the safety of the query before executing it).
-        - Execute Query: If the query is safe, execute it using the execute_sql tool to obtain the relevant results.
+        - Execute Query: If1 the query is safe, execute it using the execute_sql tool to obtain the relevant results.
         - Calculate: If the user asks for a calculation or compares numbers, use the calculator tool to calculate the result.
         
     3. Answering the user's query:
