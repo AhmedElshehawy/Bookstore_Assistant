@@ -60,7 +60,5 @@ Execution Plan & How to Follow It:
     * If no results are found, respond: "There are no out-of-stock books in the 'Travel' category."
     * Tell the user if you are not showing the full list of results in a friendly way.
 
-Important Notes:
-🚫 Do NOT modify the execution plan.
-✅ Strictly follow the defined steps.
-⚠️ If an error occurs, report it instead of proceeding with unsafe execution.
+Now, let's start answering the user's question, based on the provided plan.
+Think step by step.
