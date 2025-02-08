@@ -41,10 +41,16 @@ class ChatbotService:
 
     def _initialize_components(self) -> None:
         """Initialize all required components for the chatbot."""
-        self.memory = MemorySaver()
-        self._initialize_tools()
-        self._load_system_prompts()
-        self._initialize_llms()
+        logger.info("Initializing ChatbotService components...")
+        try:
+            self.memory = MemorySaver()
+            self._initialize_tools()
+            self._load_system_prompts()
+            self._initialize_llms()
+            logger.info("ChatbotService components initialized successfully")
+        except Exception as e:
+            logger.error(f"Component initialization failed: {e}", exc_info=True)
+            raise
 
     def _initialize_tools(self) -> None:
         """Set up tool configurations for different components."""
@@ -57,6 +63,7 @@ class ChatbotService:
         Raises:
             RuntimeError: If any prompt file cannot be loaded
         """
+        logger.info("Loading system prompts...")
         prompt_configs = {
             'chatbot': settings.CHATBOT_PROMPT_PATH,
             'relevant_task': settings.TASK_RELEVENCY_PROMPT_PATH,
@@ -69,8 +76,9 @@ class ChatbotService:
                 key: SystemMessage(content=Path(path).read_text())
                 for key, path in prompt_configs.items()
             }
+            logger.info("System prompts loaded successfully")
         except Exception as e:
-            logger.error(f"Failed to load system prompts: {e}")
+            logger.error(f"Failed to load system prompts: {e}", exc_info=True)
             raise RuntimeError("System prompts initialization failed") from e
 
     def _initialize_llms(self) -> None:
@@ -116,12 +124,14 @@ class ChatbotService:
         Returns:
             Dict containing message list
         """
+        logger.debug(f"Processing chatbot node with state: {state}")
         messages = [self.system_messages['chatbot'], *state["messages"]]
         try:
             response = self.chat_llm.invoke(messages)
+            logger.info("Chatbot node processed successfully")
             return {"messages": [response]}
         except Exception as e:
-            logger.error(f"Error in chatbot node: {e}")
+            logger.error(f"Error in chatbot node: {e}", exc_info=True)
             return {"messages": [AIMessage(content="I apologize, but I encountered an error. Please try again.")]}
 
     @traceable
@@ -134,17 +144,26 @@ class ChatbotService:
         Returns:
             Command indicating next step
         """
+        logger.debug(f"Starting _relevance_checker with state: {state}")
         messages = [
             self.system_messages['relevant_task'],
             HumanMessage(content=f"User's task: {state['user_task']}")
         ]
-        is_relevant = self.llm.with_structured_output(
-            RelevantTask, 
-            method="json_schema", 
-            strict=True
-        ).invoke(messages)
-        
-        return Command(goto="plan_generator" if is_relevant.is_relevant else "ask_user_to_rephrase")
+        logger.debug("Prepared messages for relevance checking")
+        try:
+            is_relevant = self.llm.with_structured_output(
+                RelevantTask, 
+                method="json_schema", 
+                strict=True
+            ).invoke(messages)
+            logger.debug(f"LLM returned relevance result: {is_relevant}")
+        except Exception as e:
+            logger.error("Error during relevance check LLM invocation", exc_info=True)
+            raise RuntimeError("Failed to check relevance") from e
+
+        next_step = "plan_generator" if is_relevant.is_relevant else "ask_user_to_rephrase"
+        logger.info(f"Relevance check completed. Next step determined: {next_step}")
+        return Command(goto=next_step)
 
     @traceable
     def _plan_generator(self, state: State) -> Dict[str, str]:
@@ -156,11 +175,20 @@ class ChatbotService:
         Returns:
             Dict containing the generated plan
         """
+        logger.debug(f"Starting _plan_generator with state: {state}")
         messages = [
             self.system_messages['plan_generation'],
             HumanMessage(content=f"User's task: {state['user_task']}")
         ]
-        plan = self.llm.invoke(messages)
+        logger.debug("Prepared messages for plan generation")
+        try:
+            plan = self.llm.invoke(messages)
+            logger.debug(f"Plan generated: {plan.content}")
+        except Exception as e:
+            logger.error("Error during plan generation LLM invocation", exc_info=True)
+            raise RuntimeError("Failed to generate plan") from e
+        
+        logger.info("Plan generation completed successfully")
         return {"plan": plan.content}
 
     @traceable
@@ -173,13 +201,22 @@ class ChatbotService:
         Returns:
             Dict containing executor messages
         """
+        logger.debug(f"Starting _executor with state: {state}")
         executor_messages = state["executor_messages"] or []
         messages = [
             self.system_messages['executor'],
             HumanMessage(content=f"Task: {state['user_task']}\n\nPlan: {state['plan']}")
         ] + executor_messages
+        logger.debug(f"Prepared {len(messages)} messages for executor invocation")
         
-        result = self.executor_llm.invoke(messages)
+        try:
+            result = self.executor_llm.invoke(messages)
+            logger.debug(f"Executor LLM returned result: {result.content}")
+        except Exception as e:
+            logger.error("Error during executor LLM invocation", exc_info=True)
+            raise RuntimeError("Failed to execute plan") from e
+        
+        logger.info("Execution completed successfully")
         return {"executor_messages": [result]}
 
     @traceable
@@ -192,14 +229,23 @@ class ChatbotService:
         Returns:
             Dict containing rephrasing request message
         """
+        logger.debug(f"Starting _ask_user_to_rephrase with state: {state}")
         messages = [
             HumanMessage(
                 content=f"You are an AI assistant specialized in answering questions about a bookstore. "
-                       f"The user wants to perform this task: {state['user_task']}, "
-                       f"And you can't perform it. Ask the user to rephrase their question."
+                        f"The user wants to perform this task: {state['user_task']}, "
+                        f"And you can't perform it. Ask the user to rephrase their question."
             )
         ]
-        result = self.llm.invoke(messages)
+        logger.debug("Prepared message for rephrase request")
+        try:
+            result = self.llm.invoke(messages)
+            logger.debug(f"LLM returned rephrasing message: {result.content}")
+        except Exception as e:
+            logger.error("Error during rephrasing LLM invocation", exc_info=True)
+            raise RuntimeError("Failed to generate rephrasing request") from e
+        
+        logger.info("Rephrase request generated successfully")
         return {"messages": [result], "executor_messages": [result]}
 
     def _configure_graph_edges(self, graph: StateGraph) -> None:
@@ -257,6 +303,7 @@ class ChatbotService:
             logger.error(f"Error in chat: {e}", exc_info=True)
             raise RuntimeError(f"Failed to process message: {str(e)}")
 
+    @traceable
     async def _process_chat(self, user_input: str, session_id: str) -> ChatResponse:
         """Internal method to process chat messages.
         
@@ -267,6 +314,7 @@ class ChatbotService:
         Returns:
             ChatResponse: The AI's response
         """
+        logger.info(f"Processing chat for session {session_id}")
         config = self._get_config(session_id)
         chat_history = ChatHistoryService(
             settings.CHAT_HISTORY_TABLE_NAME,
@@ -276,8 +324,10 @@ class ChatbotService:
         
         # update the chat history in the current graph state with the history retrieved from db
         if not list(self.graph.get_state_history(config)):
+            logger.debug(f"Initializing chat history for session {session_id}")
             self.graph.update_state(config, values={'messages': chat_history.messages})
         
+        logger.debug(f"Processing user input: {user_input}")
         events = self.graph.stream(
             {"messages": [{"role": "user", "content": user_input}]},
             config,
@@ -286,9 +336,11 @@ class ChatbotService:
         
         final_response = await self._process_events(events)
         
+        logger.debug("Updating chat history")
         chat_history.add_user_message(HumanMessage(content=user_input.strip()))
         chat_history.add_assistant_message(AIMessage(content=final_response))
         
+        logger.info(f"Chat processing completed for session {session_id}")
         return ChatResponse(content=final_response, role="assistant")
 
     @staticmethod
@@ -343,14 +395,22 @@ class ChatbotService:
             event: Chat event dictionary
         """
         if event.get('executor_messages'):
+            message = event['executor_messages'][-1]
             logger.info(
-                f"Processing chat response: "
-                f"Content: {event['executor_messages'][-1].content}, "
-                f"Type: {event['executor_messages'][-1].type}"
+                "Processing executor message",
+                extra={
+                    'content': message.content[:200] + "..." if len(message.content) > 200 else message.content,
+                    'type': message.type,
+                    'message_count': len(event['executor_messages'])
+                }
             )
         elif event.get('messages'):
+            message = event['messages'][-1]
             logger.info(
-                f"Processing chat response: "
-                f"Content: {event['messages'][-1].content}, "
-                f"Type: {event['messages'][-1].type}"
+                "Processing chat message",
+                extra={
+                    'content': message.content[:200] + "..." if len(message.content) > 200 else message.content,
+                    'type': message.type,
+                    'message_count': len(event['messages'])
+                }
             )
