@@ -1,1 +1,1 @@
-from .schemas import SQLQuery, QueryResponse, QueryRequest, State, ChatResponse
+from .schemas import SQLQuery, QueryResponse, QueryRequest, State, ChatResponse, RelevantTask

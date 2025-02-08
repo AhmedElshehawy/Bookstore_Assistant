@@ -19,9 +19,17 @@ from typing_extensions import TypedDict
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition
-from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel, Field
+
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+    executor_messages: Annotated[list, add_messages]
+    user_task: str
+    plan: str
+
+class RelevantTask(BaseModel):
+    is_relevant: bool = Field(description="Whether the user's task is relevant to a bookstore.")
 
 class SQLQuery(BaseModel):
     sql_query: str = Field(description="The SQL query generated from the user's query. Default is ''")
@@ -32,9 +40,6 @@ class QueryResponse(BaseModel):
 class QueryRequest(BaseModel):
     user_query: str = Field(description="The user's query. Default is ''")
     thread_id: str = Field(description="The thread id")
-
-class State(TypedDict):
-    messages: Annotated[list, add_messages]
 
 class ChatResponse(BaseModel):
     content: str

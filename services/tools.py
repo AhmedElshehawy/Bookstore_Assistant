@@ -1,3 +1,11 @@
+from langgraph.types import Command
+
+from langchain_core.tools import InjectedToolCallId
+from langgraph.prebuilt import InjectedState
+from langchain_core.messages import ToolMessage
+
+from typing import Annotated
+from langchain_core.runnables import RunnableConfig
 import json
 import math
 from typing import Any, Dict
@@ -20,10 +28,15 @@ llm = ChatOpenAI(
     api_key=settings.OPENAI_API_KEY
 )
 
+generate_user_task_system_message = SystemMessage(content=open(settings.TASK_GENERATION_PROMPT_PATH).read())
 # Load system prompts
 try:
     text_to_sql_system_message = SystemMessage(content=open(settings.TEXT_TO_SQL_PROMPT_PATH).read())
     is_safe_sql_system_message = SystemMessage(content=open(settings.IS_SAFE_SQL_PROMPT_PATH).read())
+    plan_generation_system_message = SystemMessage(content=open(settings.PLAN_GENERATION_PROMPT_PATH).read())
+    executor_system_message = SystemMessage(content=open(settings.EXECUTOR_PROMPT_PATH).read())
+    task_relevency_system_message = SystemMessage(content=open(settings.TASK_RELEVENCY_PROMPT_PATH).read())
+    task_generation_system_message = SystemMessage(content=open(settings.TASK_GENERATION_PROMPT_PATH).read())
 except FileNotFoundError as e:
     logger.error(f"Failed to load prompt files: {e}")
     raise
@@ -183,3 +196,18 @@ def is_relevant(user_query: str) -> str:
     except Exception as e:
         logger.error(f"Failed to check relevance: {e}")
         return False
+
+@tool
+def generate_user_task(tool_call_id: Annotated[str, InjectedToolCallId], config: RunnableConfig, chat_history: Annotated[list, InjectedState("messages")]) -> str:
+    """Generate the user's intended task based on the chat history"""
+    messages = [generate_user_task_system_message]
+    messages.extend(chat_history[:-1])
+    
+    return Command(
+        update={
+            # update the state keys
+            "user_task": llm.invoke(messages).content,
+            # update the message history
+            "messages": [ToolMessage("Successfully generated user's task", tool_call_id=tool_call_id)]
+        }
+    )

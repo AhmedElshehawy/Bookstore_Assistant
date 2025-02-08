@@ -33,7 +33,7 @@ async def query_books(query_request: QueryRequest) -> QueryResponse:
     Raises:
         HTTPException: If there's an error processing the request
     """
-    chatbot_service = ChatbotService(settings.CHATBOT_PROMPT_PATH, settings.CHAT_HISTORY_TABLE_NAME, settings.CHAT_HISTORY_PRIMARY_KEY_NAME)
+    chatbot_service = ChatbotService()
     
     logger.info(f"Processing query request: {query_request}") 
     try:
