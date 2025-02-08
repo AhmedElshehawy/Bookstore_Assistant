@@ -6,6 +6,7 @@ Contains tools for SQL operations, calculations, and task management.
 from typing import Any, Dict, List, Annotated
 import json
 import math
+from langsmith import traceable
 import numexpr
 import requests
 
@@ -93,6 +94,7 @@ llm = ChatOpenAI(
 )
 
 @tool
+@traceable
 def text_to_sql(user_query: str) -> str:
     """Convert natural language query to SQL."""
     try:
@@ -105,6 +107,7 @@ def text_to_sql(user_query: str) -> str:
         logger.error(f"Failed to convert text to SQL: {e}")
         raise
 
+@traceable
 @tool
 def is_safe_sql(sql_query: str) -> str:
     """Check if the SQL query is safe to execute."""
@@ -117,12 +120,14 @@ def is_safe_sql(sql_query: str) -> str:
         logger.error(f"Failed to check SQL safety: {e}")
         return "not safe"
 
+@traceable
 @tool
 def execute_sql(sql_query: str) -> Dict[str, Any]:
     """Execute SQL query and return results."""
     logger.info(f"Executing SQL query: {sql_query}")
     return DatabaseClient.execute_query(sql_query)
 
+@traceable
 @tool
 def calculator(expression: str) -> str:
     """Evaluate mathematical expressions safely."""
@@ -150,6 +155,7 @@ def calculator(expression: str) -> str:
         logger.error(f"Calculator error: {e}")
         raise ValueError(f"Invalid mathematical expression: {str(e)}")
 
+@traceable
 @tool
 def is_relevant(user_query: str) -> str:
     """Check if the user's query is relevant to the bookstore."""
@@ -162,6 +168,7 @@ def is_relevant(user_query: str) -> str:
         logger.error(f"Failed to check relevance: {e}")
         return "not relevant"
 
+@traceable
 @tool
 def generate_user_task(
     tool_call_id: Annotated[str, InjectedToolCallId],

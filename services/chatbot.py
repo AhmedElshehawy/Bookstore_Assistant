@@ -105,7 +105,8 @@ class ChatbotService:
         self._configure_graph_edges(graph_builder)
         
         return graph_builder.compile(checkpointer=self.memory)
-
+    
+    @traceable
     def _chatbot_node(self, state: State) -> Dict[str, List[BaseMessage]]:
         """Process initial user input in the conversation.
         
@@ -123,6 +124,7 @@ class ChatbotService:
             logger.error(f"Error in chatbot node: {e}")
             return {"messages": [AIMessage(content="I apologize, but I encountered an error. Please try again.")]}
 
+    @traceable
     def _relevance_checker(self, state: State) -> Command[Literal["plan_generator", "ask_user_to_rephrase"]]:
         """Check if the user's task is relevant and processable.
         
@@ -144,6 +146,7 @@ class ChatbotService:
         
         return Command(goto="plan_generator" if is_relevant.is_relevant else "ask_user_to_rephrase")
 
+    @traceable
     def _plan_generator(self, state: State) -> Dict[str, str]:
         """Generate execution plan for the user's task.
         
@@ -160,6 +163,7 @@ class ChatbotService:
         plan = self.llm.invoke(messages)
         return {"plan": plan.content}
 
+    @traceable
     def _executor(self, state: State) -> Dict[str, List[BaseMessage]]:
         """Execute the generated plan.
         
@@ -178,6 +182,7 @@ class ChatbotService:
         result = self.executor_llm.invoke(messages)
         return {"executor_messages": [result]}
 
+    @traceable
     def _ask_user_to_rephrase(self, state: State) -> Dict[str, List[BaseMessage]]:
         """Generate a rephrasing request when task is unclear.
         
