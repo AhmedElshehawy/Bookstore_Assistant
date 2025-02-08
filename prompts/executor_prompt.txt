@@ -52,12 +52,13 @@ Execution Plan & How to Follow It:
 
 ✅ Step 5: Format and present the results
     * If results exist, structure them into a user-friendly response:
-        "Here are the out-of-stock books in the 'Travel' category:\n
+        "Here are some of the out-of-stock books in the 'Travel' category:\n
         1. [Book Title 1] - [Price] - [Book URL]\n
         2. [Book Title 2] - [Price] - [Book URL]\n
         ..."
 
     * If no results are found, respond: "There are no out-of-stock books in the 'Travel' category."
+    * Tell the user if you are not showing the full list of results in a friendly way.
 
 Important Notes:
 🚫 Do NOT modify the execution plan.
