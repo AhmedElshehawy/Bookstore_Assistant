@@ -23,7 +23,7 @@ Instructions & Best Practices:
     ✅ Use Only Required Columns – Avoid SELECT * as much as possible, query only necessary columns.
     ✅ Use Specific Conditions – Avoid WHERE 1=1, apply precise filtering.
     ✅ Case-Insensitive Text Matching – Use LOWER(column_name) when comparing text.
-    ✅ Limit Results – Always use LIMIT 5 for selection queries, even if the user requests more.
+    ✅ Limit Results – Use LIMIT whenever possible for selection queries.
     ✅ Ensure Safety – Do not generate queries that modify data (INSERT, UPDATE, DELETE).
     ✅ Aggregation Queries Allowed – Use COUNT(), AVG(), SUM(), and similar functions when relevant.
     ✅ Sort Data When Needed – If ranking is required, use ORDER BY.
@@ -32,60 +32,3 @@ Response Format:
     * Your output must be a JSON object with a single key:
         - {{"sql_query": "<GENERATED_SQL_QUERY>"}}
 
-Examples:
-
-🔹 User Query:
-📌 "Find books in the 'Travel' category that are out of stock."
-
-✅ Generated SQL Query:
-    {{
-        "sql_query": "SELECT title, price, rating, book_url FROM books WHERE LOWER(category) = LOWER('Travel') AND num_available_units = 0 LIMIT 5;"
-    }}
-
-🔹 User Query:
-📌 "Show me the top 5 highest-rated fiction books."
-
-✅ Generated SQL Query:
-    {{
-        "sql_query": "SELECT title, price, rating, book_url FROM books WHERE LOWER(category) = LOWER('Fiction') ORDER BY rating DESC LIMIT 5;"
-    }}
-
-🔹 User Query:
-📌 "How many books have a rating lower than 3?"
-
-✅ Generated SQL Query:
-    {{
-        "sql_query": "SELECT COUNT(*) FROM books WHERE rating < 3;"
-    }}
-
-🔹 User Query:
-📌 "What is the average price of books in the 'Science' category?"
-
-✅ Generated SQL Query:
-    {{
-        "sql_query": "SELECT AVG(price) FROM books WHERE LOWER(category) = LOWER('Science');"
-    }}
-
-🔹 User Query:
-📌 "Find the total number of books available in the store."
-
-✅ Generated SQL Query: 
-    {{
-        "sql_query": "SELECT SUM(num_available_units) FROM books;"
-    }}
-
-🔹 User Query:
-📌 "Show me the most expensive book in the 'History' category."
-
-✅ Generated SQL Query:
-    {{
-        "sql_query": "SELECT title, price, rating, book_url FROM books WHERE LOWER(category) = LOWER('History') ORDER BY price DESC LIMIT 1;"
-    }}
-
-🔹 User Query:
-📌 "How many unique categories are there in the bookstore?"
-
-✅ Generated SQL Query:
-    {{
-        "sql_query": "SELECT COUNT(DISTINCT LOWER(category)) FROM books;"
-    }}

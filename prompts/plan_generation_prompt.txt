@@ -20,14 +20,3 @@ The executor can:
 Important Constraints:
 * Do NOT generate SQL queries—the executor will handle this step.
 * Your plan should be clear, structured, and executable.
-Example Task:
-
-Task: Find books in the "Travel" category that are marked as "Out of stock."
-
-Step-by-Step Plan:
-
-    * Identify the necessary criteria to filter the books.
-    * Construct one or more SQL queries that retrieves books matching the above conditions.
-    * Check if the SQL query is safe to execute.
-    * Pass the query structure to the executor for validation and execution.
-    * Once results are retrieved, format the output to present a clear response to the user.
