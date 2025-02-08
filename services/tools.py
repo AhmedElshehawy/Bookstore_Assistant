@@ -88,7 +88,8 @@ class DatabaseClient:
 prompts = SystemPrompts()
 llm = ChatOpenAI(
     model=settings.OPENAI_MODEL,
-    temperature=0
+    temperature=0,
+    api_key=settings.OPENAI_API_KEY
 )
 
 @tool
