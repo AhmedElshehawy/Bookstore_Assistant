@@ -26,7 +26,15 @@ class Settings(BaseSettings):
     CHATBOT_PROMPT_PATH: str
     TEXT_TO_SQL_PROMPT_PATH: str
     IS_SAFE_SQL_PROMPT_PATH: str
-       
+    PLAN_GENERATION_PROMPT_PATH: str
+    EXECUTOR_PROMPT_PATH: str
+    TASK_RELEVENCY_PROMPT_PATH: str
+    TASK_GENERATION_PROMPT_PATH: str
+    
+    # Chat History
+    CHAT_HISTORY_TABLE_NAME: str
+    CHAT_HISTORY_PRIMARY_KEY_NAME: str
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

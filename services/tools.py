@@ -1,53 +1,104 @@
+"""
+Tools module providing various utility functions for the bookstore application.
+Contains tools for SQL operations, calculations, and task management.
+"""
+
+from typing import Any, Dict, List, Annotated
 import json
 import math
-from typing import Any, Dict
 import numexpr
 import requests
-from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.tools import tool
+
+from langchain_core.messages import (
+    SystemMessage,
+    HumanMessage,
+    ToolMessage
+)
+from langchain_core.tools import tool, InjectedToolCallId
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
+from langgraph.types import Command
+from langgraph.prebuilt import InjectedState
+
 from core import settings
 from core.logger import setup_logger
 from models.schemas import SQLQuery
 
+
 # Initialize logger
 logger = setup_logger(__name__, level=settings.LOG_LEVEL)
 
-# Initialize LLM
+class PromptLoader:
+    """Handles loading and managing system prompts."""
+    
+    @staticmethod
+    def load_prompt(path: str) -> SystemMessage:
+        """Load a prompt file and return as SystemMessage."""
+        try:
+            with open(path, 'r', encoding='utf-8') as file:
+                return SystemMessage(content=file.read())
+        except FileNotFoundError as e:
+            logger.error(f"Failed to load prompt file {path}: {e}")
+            raise
+
+class SystemPrompts:
+    """Container for all system prompts used in the application."""
+    
+    def __init__(self):
+        """Initialize all system prompts."""
+        self.text_to_sql = PromptLoader.load_prompt(settings.TEXT_TO_SQL_PROMPT_PATH)
+        self.is_safe_sql = PromptLoader.load_prompt(settings.IS_SAFE_SQL_PROMPT_PATH)
+        self.plan_generation = PromptLoader.load_prompt(settings.PLAN_GENERATION_PROMPT_PATH)
+        self.executor = PromptLoader.load_prompt(settings.EXECUTOR_PROMPT_PATH)
+        self.task_relevency = PromptLoader.load_prompt(settings.TASK_RELEVENCY_PROMPT_PATH)
+        self.task_generation = PromptLoader.load_prompt(settings.TASK_GENERATION_PROMPT_PATH)
+
+class SQLExecutionError(Exception):
+    """Custom exception for SQL execution errors."""
+    pass
+
+class DatabaseClient:
+    """Handles database interactions."""
+    
+    @staticmethod
+    def execute_query(sql_query: str) -> Dict[str, Any]:
+        """Execute SQL query against the database."""
+        try:
+            payload = json.dumps({"query": sql_query})
+            headers = {'Content-Type': 'application/json'}
+            
+            response = requests.post(
+                settings.DB_URL,
+                headers=headers,
+                data=payload
+            )
+            response.raise_for_status()
+            return response.json()
+        
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Database request failed: {e}")
+            raise SQLExecutionError(f"Database request failed: {str(e)}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid response format: {e}")
+            raise SQLExecutionError(f"Invalid response format: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected database error: {e}")
+            raise SQLExecutionError(f"Unexpected error: {str(e)}")
+
+# Initialize global instances
+prompts = SystemPrompts()
 llm = ChatOpenAI(
     model=settings.OPENAI_MODEL,
     temperature=0,
     api_key=settings.OPENAI_API_KEY
 )
 
-# Load system prompts
-try:
-    text_to_sql_system_message = SystemMessage(content=open(settings.TEXT_TO_SQL_PROMPT_PATH).read())
-    is_safe_sql_system_message = SystemMessage(content=open(settings.IS_SAFE_SQL_PROMPT_PATH).read())
-except FileNotFoundError as e:
-    logger.error(f"Failed to load prompt files: {e}")
-    raise
-
-class SQLExecutionError(Exception):
-    """Custom exception for SQL execution errors"""
-    pass
 
 @tool
 def text_to_sql(user_query: str) -> str:
-    """
-    Convert natural language query to SQL.
-    
-    Args:
-        user_query (str): The user's natural language query
-        
-    Returns:
-        str: Generated SQL query
-        
-    Raises:
-        Exception: If SQL generation fails
-    """
+    """Convert natural language query to SQL."""
     try:
-        messages = [text_to_sql_system_message, HumanMessage(content=f"User's query: {user_query}")]
+        messages = [prompts.text_to_sql, HumanMessage(content=f"User's query: {user_query}")]
         structured_llm = llm.with_structured_output(SQLQuery, method="json_schema", strict=True)
         sql_query = structured_llm.invoke(messages)
         logger.info(f"Generated SQL query: {sql_query.sql_query}")
@@ -56,83 +107,31 @@ def text_to_sql(user_query: str) -> str:
         logger.error(f"Failed to convert text to SQL: {e}")
         raise
 
+
 @tool
-def is_safe_sql(sql_query: str) -> bool:
-    """
-    Check if the SQL query is safe to execute.
-    
-    Args:
-        sql_query (str): The SQL query to check
-        
-    Returns:
-        bool: True if safe, False otherwise
-    """
+def is_safe_sql(sql_query: str) -> str:
+    """Check if the SQL query is safe to execute."""
     try:
-        messages = [is_safe_sql_system_message, HumanMessage(content=f"SQL query: {sql_query}")]
+        messages = [prompts.is_safe_sql, HumanMessage(content=f"SQL query: {sql_query}")]
         response = llm.invoke(messages)
-        is_safe = 'safe' in response.content.lower() and 'not safe' not in response.content.lower()
-        logger.info(f"SQL safety check result: {is_safe}")
-        return is_safe
+        logger.info(f"SQL safety check completed: {response.content.lower()}")
+        return response.content.lower()
     except Exception as e:
         logger.error(f"Failed to check SQL safety: {e}")
-        return False
+        return "not safe"
+
 
 @tool
 def execute_sql(sql_query: str) -> Dict[str, Any]:
-    """
-    Execute SQL query and return results.
-    
-    Args:
-        sql_query (str): The SQL query to execute
-        
-    Returns:
-        Dict[str, Any]: Query results
-        
-    Raises:
-        SQLExecutionError: If query execution fails
-    """
-    try:
-        payload = json.dumps({"query": sql_query})
-        headers = {'Content-Type': 'application/json'}
-        
-        response = requests.post(
-            settings.DB_URL,
-            headers=headers,
-            data=payload,
-            timeout=30  # Add timeout
-        )
-        
-        response.raise_for_status()  # Raise exception for bad status codes
-        
-        result = response.json()
-        logger.info(f"Successfully executed SQL query")
-        return result
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to execute SQL query: {e}")
-        raise SQLExecutionError(f"Database request failed: {str(e)}")
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse SQL query response: {e}")
-        raise SQLExecutionError(f"Invalid response format: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error during SQL execution: {e}")
-        raise SQLExecutionError(f"Unexpected error: {str(e)}")
+    """Execute SQL query and return results."""
+    logger.info(f"Executing SQL query: {sql_query}")
+    return DatabaseClient.execute_query(sql_query)
+
 
 @tool
 def calculator(expression: str) -> str:
-    """
-    Evaluate mathematical expressions safely.
-    
-    Args:
-        expression (str): Mathematical expression to evaluate
-        
-    Returns:
-        str: Result of the calculation
-        
-    Raises:
-        ValueError: If expression is invalid
-    """
+    """Evaluate mathematical expressions safely."""
     try:
-        # Define allowed mathematical constants
         local_dict = {
             "pi": math.pi,
             "e": math.e,
@@ -140,45 +139,53 @@ def calculator(expression: str) -> str:
             "abs": abs
         }
         
-        # Clean and validate expression
         cleaned_expression = expression.strip()
         if not cleaned_expression:
             raise ValueError("Empty expression")
             
         result = numexpr.evaluate(
             cleaned_expression,
-            global_dict={},  # Restrict access to globals
+            global_dict={},
             local_dict=local_dict,
         )
         
-        logger.info(f"Calculated expression: {cleaned_expression} = {result}")
+        logger.info(f"Calculated: {cleaned_expression} = {result}")
         return str(result)
     except Exception as e:
         logger.error(f"Calculator error: {e}")
         raise ValueError(f"Invalid mathematical expression: {str(e)}")
-    
+
+
 @tool
-def is_relevant(user_query: str) -> bool:
-    """
-    Check if the user's query is relevant to the bookstore.
-    
-    Args:
-        user_query (str): The user's query
-        
-    Returns:
-        bool: True if relevant, False otherwise
-    """
+def is_relevant(user_query: str) -> str:
+    """Check if the user's query is relevant to the bookstore."""
     try:
-        messages = [
-            SystemMessage(
-                content="You are an AI assistant tasked with answering questions related to a bookstore called https://books.toscrape.com. The bookstore's data is stored in a PostgreSQL database, and you can query this database to respond to user inquiries. If the user asks about something that is not related to the bookstore, you should politely inform them that you are not able to answer that question."
-            ), 
-            HumanMessage(content=f"User's query: {user_query}")
-        ]
+        messages = [prompts.task_relevency, HumanMessage(content=f"User's query: {user_query}")]
         response = llm.invoke(messages)
-        is_relevant = 'relevant' in response.content.lower() and 'not relevant' not in response.content.lower()
-        logger.info(f"Relevance check result: {is_relevant}")
-        return is_relevant
+        logger.info(f"Relevance check completed: {response.content.lower()}")
+        return response.content.lower()
     except Exception as e:
         logger.error(f"Failed to check relevance: {e}")
-        return False
+        return "not relevant"
+
+
+@tool
+def generate_user_task(
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    config: RunnableConfig,
+    chat_history: Annotated[List, InjectedState("messages")]
+) -> Command:
+    """Generate the user's intended task based on the chat history."""
+    messages = [prompts.task_generation]
+    
+    messages.extend(chat_history[:-1])
+    
+    task = llm.invoke(messages).content
+    logger.info(f"Generated user task: {task}")
+    
+    return Command(
+        update={
+            "user_task": str(task),
+            "messages": [ToolMessage(f"Successfully generated user's task: {str(task)}", tool_call_id=tool_call_id)]
+        }
+    )

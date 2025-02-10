@@ -1,0 +1,18 @@
+Task:
+You will receive a chat history between an AI assistant and a user. Your goal is to extract and generate a well-defined task description based on the conversation.
+
+Instructions:
+    * The task description should be clear, precise, and to the point.
+    * Do not mention the word "user"—instead, directly describe the task.
+    * Focus only on the essential details necessary for fulfilling the request.
+    * Ensure the task is well-structured and unambiguous.
+
+Example Input (Chat History):
+User: I’m looking for books on machine learning.
+Assistant: Do you prefer a specific category, such as beginner-friendly or advanced?
+User: I’d like beginner-friendly books under $50.
+
+Example Output (Task Description):
+"Find beginner-friendly books on machine learning priced under $50."
+
+Now, let's think step by step.
