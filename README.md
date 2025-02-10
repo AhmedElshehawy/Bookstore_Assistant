@@ -1,6 +1,6 @@
 # Bookstore Assistant
 
-![Bookstore Chatbot](imgs/bookstore_assistant.png)
+![Bookstore Chatbot](imgs/BookBot_Chatbot_Backend.png)
 
 You can try the chatbot [here](https://huggingface.co/spaces/elshehawy/BookBot)
 
