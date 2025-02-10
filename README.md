@@ -2,6 +2,8 @@
 
 ![Bookstore Chatbot](imgs/bookstore_assistant.png)
 
+You can try the chatbot [here](https://huggingface.co/spaces/elshehawy/BookBot)
+
 ## Overview
 
 Bookstore Assistant is a key component of a larger system consisting of four interconnected repositories. Together, these repositories enable users to chat with a comprehensive books database through an intelligent chatbot interface. This repository specifically handles the chatbot interactions, processing user queries, and routing them to retrieve relevant book data.
