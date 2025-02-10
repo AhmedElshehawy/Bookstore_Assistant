@@ -3,7 +3,9 @@ from models import QueryRequest, QueryResponse
 from core import setup_logger, settings
 from services.chatbot import ChatbotService
 from services.chat_history import ChatHistoryService
-# Initialize router with prefix and tags for better API documentation
+
+
+# Initialize router
 query_router = APIRouter(
     tags=["query"],
     responses={404: {"description": "Not found"}},

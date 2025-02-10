@@ -1,22 +1,28 @@
-Task:
-You will receive a task description related to a bookstore. Your goal is to generate a well-defined, step-by-step plan that an executor will follow to complete the task.
-
 Context:
 
-    The bookstore's data is stored in a PostgreSQL database.
-    All books are in a single table named "books" with the following columns:
-        id, title, price, rating, description, category, upc, num_available_units, image_url, book_url.
-    The executor will follow your plan to perform the task.
+    You are given a task description related to a bookstore.
+    The bookstore’s data is stored in a PostgreSQL database.
+    All book records are in a single table named books with the columns:
+    id, title, price, rating, description, category, upc, num_available_units, image_url, book_url.
+    An executor will follow your plan to perform the task.
+
+Task:
+
+    Write a clear, structured, and concise plan that the executor will follow.
+    Include only the main steps (no sub-steps).
+    Instruct the executor to optimize the SQL query by:
+        Using aggregate functions such as MAX, MIN, AVG, SUM, COUNT, etc.
+        Employing SQL clauses like ORDER BY and GROUP BY.
+    Aim to minimize database interactions for optimal performance. If a task can be completed with one query, instruct the executor accordingly; if multiple queries are needed, keep them to a minimum.
 
 Executor Capabilities:
-The executor can:
 
-    * Generate a SQL query to retrieve relevant data.
-    * Verify if the SQL query is safe before execution.
-    * Execute the SQL query to fetch data.
-    * Perform calculations when necessary.
-    * Answer the user’s question based on the retrieved data and calculations.
+    Generate a SQL query to retrieve the required data.
+    Verify that the SQL query is safe before execution.
+    Execute the SQL query to fetch data.
+    Analyze the retrieved data and and answer the user’s question.
 
 Important Constraints:
-* Do NOT generate SQL queries—the executor will handle this step.
-* Your plan should be clear, structured, and executable.
+
+    Do not generate any SQL queries yourself; the executor will handle that step.
+

@@ -6,7 +6,6 @@ Contains tools for SQL operations, calculations, and task management.
 from typing import Any, Dict, List, Annotated
 import json
 import math
-from langsmith import traceable
 import numexpr
 import requests
 
@@ -24,6 +23,7 @@ from langgraph.prebuilt import InjectedState
 from core import settings
 from core.logger import setup_logger
 from models.schemas import SQLQuery
+
 
 # Initialize logger
 logger = setup_logger(__name__, level=settings.LOG_LEVEL)
@@ -93,8 +93,8 @@ llm = ChatOpenAI(
     api_key=settings.OPENAI_API_KEY
 )
 
+
 @tool
-@traceable
 def text_to_sql(user_query: str) -> str:
     """Convert natural language query to SQL."""
     try:
@@ -107,7 +107,7 @@ def text_to_sql(user_query: str) -> str:
         logger.error(f"Failed to convert text to SQL: {e}")
         raise
 
-@traceable
+
 @tool
 def is_safe_sql(sql_query: str) -> str:
     """Check if the SQL query is safe to execute."""
@@ -120,14 +120,14 @@ def is_safe_sql(sql_query: str) -> str:
         logger.error(f"Failed to check SQL safety: {e}")
         return "not safe"
 
-@traceable
+
 @tool
 def execute_sql(sql_query: str) -> Dict[str, Any]:
     """Execute SQL query and return results."""
     logger.info(f"Executing SQL query: {sql_query}")
     return DatabaseClient.execute_query(sql_query)
 
-@traceable
+
 @tool
 def calculator(expression: str) -> str:
     """Evaluate mathematical expressions safely."""
@@ -155,7 +155,7 @@ def calculator(expression: str) -> str:
         logger.error(f"Calculator error: {e}")
         raise ValueError(f"Invalid mathematical expression: {str(e)}")
 
-@traceable
+
 @tool
 def is_relevant(user_query: str) -> str:
     """Check if the user's query is relevant to the bookstore."""
@@ -168,7 +168,7 @@ def is_relevant(user_query: str) -> str:
         logger.error(f"Failed to check relevance: {e}")
         return "not relevant"
 
-@traceable
+
 @tool
 def generate_user_task(
     tool_call_id: Annotated[str, InjectedToolCallId],
@@ -185,7 +185,7 @@ def generate_user_task(
     
     return Command(
         update={
-            "user_task": task,
-            "messages": [ToolMessage("Successfully generated user's task", tool_call_id=tool_call_id)]
+            "user_task": str(task),
+            "messages": [ToolMessage(f"Successfully generated user's task: {str(task)}", tool_call_id=tool_call_id)]
         }
     )

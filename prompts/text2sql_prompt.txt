@@ -28,7 +28,3 @@ Instructions & Best Practices:
     ✅ Aggregation Queries Allowed – Use COUNT(), AVG(), SUM(), and similar functions when relevant.
     ✅ Sort Data When Needed – If ranking is required, use ORDER BY.
 
-Response Format:
-    * Your output must be a JSON object with a single key:
-        - {{"sql_query": "<GENERATED_SQL_QUERY>"}}
-

@@ -35,12 +35,6 @@ class Settings(BaseSettings):
     CHAT_HISTORY_TABLE_NAME: str
     CHAT_HISTORY_PRIMARY_KEY_NAME: str
     
-    # Tracing
-    LANGSMITH_TRACING: bool = True
-    LANGSMITH_ENDPOINT: str
-    LANGSMITH_API_KEY: str
-    LANGSMITH_PROJECT: str 
-       
     class Config:
         env_file = ".env"
         case_sensitive = True

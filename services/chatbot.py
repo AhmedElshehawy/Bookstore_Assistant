@@ -19,7 +19,6 @@ from .tools import (
     llm,
     text_to_sql,
 )
-from langsmith import traceable
 
 logger = setup_logger(__name__, level=settings.LOG_LEVEL)
 
@@ -114,7 +113,7 @@ class ChatbotService:
         
         return graph_builder.compile(checkpointer=self.memory)
     
-    @traceable
+    
     def _chatbot_node(self, state: State) -> Dict[str, List[BaseMessage]]:
         """Process initial user input in the conversation.
         
@@ -134,7 +133,7 @@ class ChatbotService:
             logger.error(f"Error in chatbot node: {e}", exc_info=True)
             return {"messages": [AIMessage(content="I apologize, but I encountered an error. Please try again.")]}
 
-    @traceable
+    
     def _relevance_checker(self, state: State) -> Command[Literal["plan_generator", "ask_user_to_rephrase"]]:
         """Check if the user's task is relevant and processable.
         
@@ -165,7 +164,7 @@ class ChatbotService:
         logger.info(f"Relevance check completed. Next step determined: {next_step}")
         return Command(goto=next_step)
 
-    @traceable
+    
     def _plan_generator(self, state: State) -> Dict[str, str]:
         """Generate execution plan for the user's task.
         
@@ -183,7 +182,7 @@ class ChatbotService:
         logger.debug("Prepared messages for plan generation")
         try:
             plan = self.llm.invoke(messages)
-            logger.debug(f"Plan generated: {plan.content}")
+            logger.info(f"Plan generated: {plan.content}")
         except Exception as e:
             logger.error("Error during plan generation LLM invocation", exc_info=True)
             raise RuntimeError("Failed to generate plan") from e
@@ -191,7 +190,7 @@ class ChatbotService:
         logger.info("Plan generation completed successfully")
         return {"plan": plan.content}
 
-    @traceable
+    
     def _executor(self, state: State) -> Dict[str, List[BaseMessage]]:
         """Execute the generated plan.
         
@@ -219,7 +218,7 @@ class ChatbotService:
         logger.info("Execution completed successfully")
         return {"executor_messages": [result]}
 
-    @traceable
+    
     def _ask_user_to_rephrase(self, state: State) -> Dict[str, List[BaseMessage]]:
         """Generate a rephrasing request when task is unclear.
         
@@ -279,7 +278,7 @@ class ChatbotService:
         graph.add_edge("executor_tools", "executor")
         graph.add_edge(START, "chatbot")
 
-    @traceable
+    
     async def chat(self, user_input: str, session_id: str) -> ChatResponse:
         """Process a user message and generate a response.
         
@@ -303,7 +302,7 @@ class ChatbotService:
             logger.error(f"Error in chat: {e}", exc_info=True)
             raise RuntimeError(f"Failed to process message: {str(e)}")
 
-    @traceable
+    
     async def _process_chat(self, user_input: str, session_id: str) -> ChatResponse:
         """Internal method to process chat messages.
         
